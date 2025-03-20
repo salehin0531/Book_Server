@@ -116,6 +116,14 @@ async function run() {
         });
 
 
+        app.get('/book/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await BookCollection.findOne(query);
+            res.send(result);
+        })
+
+
         app.post('/book', verifyJWT, async (req, res) => {
             const newBook = req.body;
             console.log(newBook);
