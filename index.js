@@ -145,6 +145,16 @@ async function run() {
             res.send(result);
         })
 
+
+
+        app.delete('/book/:id', verifyJWT, async (req, res) => {
+            console.log('going to delete', req.params.id);
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await BookCollection.deleteOne(query);
+            res.send(result);
+        })
+
         
         // Send a ping to confirm a successful connection....
         await client.db("admin").command({ ping: 1 });
