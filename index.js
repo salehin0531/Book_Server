@@ -131,6 +131,20 @@ async function run() {
             res.send(result)
         })
 
+
+        app.put('/book/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: req.body
+            }
+
+            const result = await BookCollection.updateOne(filter, updatedDoc, options)
+
+            res.send(result);
+        })
+
         
         // Send a ping to confirm a successful connection....
         await client.db("admin").command({ ping: 1 });
@@ -141,8 +155,6 @@ async function run() {
     }
 }
 run().catch(console.dir);
-
-
 
 
 
