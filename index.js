@@ -99,8 +99,20 @@ async function run() {
                 .send({ success: true, token });
         });
 
+
+//change passs 
+
+
+
         app.post('/logout', (req, res) => {
             res.clearCookie('token').send({ success: true, message: "Logged out successfully" });
+        });
+
+
+        app.get('/book',verifyJWT, async (req, res) => {
+            const cursor = BookCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
         });
 
 
