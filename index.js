@@ -4,7 +4,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const app = express();
-const bcrypt = require('bcryptjs'); 
+const bcrypt = require('bcryptjs');
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
@@ -54,25 +54,25 @@ async function run() {
         // User Registration (Sign Up)
         app.post('/register', async (req, res) => {
             const { name, email, password } = req.body;
-        
+
             if (!password) {
                 return res.status(400).send({ message: "Password is required" });
             }
-        
+
             console.log("Received password:", password); // Debugging
-        
+
             const existingUser = await UsersCollection.findOne({ email });
             if (existingUser) {
                 return res.status(400).send({ message: "User already exists" });
             }
-        
+
             const hashedPassword = await bcrypt.hash(password, 10);
             const newUser = { name, email, password: hashedPassword };
-        
+
             const result = await UsersCollection.insertOne(newUser);
             res.send(result);
         });
-        
+
 
         // User Login
         app.post('/login', async (req, res) => {
@@ -100,7 +100,45 @@ async function run() {
         });
 
 
-//change passs 
+        
+
+        //change pass 
+        app.post('/change-password', async (req, res) => {
+            const { email, oldPassword, newPassword } = req.body;
+
+            // Validate input fields
+            if (!email || !oldPassword || !newPassword) {
+                return res.status(400).json({ message: "All fields are required" });
+            }
+
+            // Find user by email
+            const user = await UsersCollection.findOne({ email });
+            if (!user) {
+                return res.status(400).json({ message: "User not found" });
+            }
+
+            // Compare old password
+            const isMatch = await bcrypt.compare(oldPassword, user.password);
+            console.log(isMatch);
+            if (!isMatch) {
+                return res.status(400).json({ message: "Old password is incorrect" });
+            }
+
+            // Hash the new password
+            const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+            // Update password in the database
+            const result = await UsersCollection.updateOne(
+                { email },
+                { $set: { password: hashedNewPassword } }
+            );
+
+            if (result.modifiedCount > 0) {
+                res.json({ success: true, message: "Password changed successfully" });
+            } else {
+                res.status(500).json({ message: "Password update failed" });
+            }
+        });
 
 
 
@@ -109,7 +147,7 @@ async function run() {
         });
 
 
-        app.get('/book',verifyJWT, async (req, res) => {
+        app.get('/book', verifyJWT, async (req, res) => {
             const cursor = BookCollection.find();
             const result = await cursor.toArray();
             res.send(result);
@@ -155,7 +193,7 @@ async function run() {
             res.send(result);
         })
 
-        
+
         // Send a ping to confirm a successful connection....
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
