@@ -103,6 +103,14 @@ async function run() {
             res.clearCookie('token').send({ success: true, message: "Logged out successfully" });
         });
 
+
+        app.post('/book', verifyJWT, async (req, res) => {
+            const newBook = req.body;
+            console.log(newBook);
+            const result = await BookCollection.insertOne(newBook);
+            res.send(result)
+        })
+
         
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
