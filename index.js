@@ -4,20 +4,40 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const app = express();
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
+const multer = require('multer');
+const path = require('path');
+
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173', // Vite's default port
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(cookieParser());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-//salehin
-//salehin
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+    }
+});
+const upload = multer({ storage });
+
 
 const uri = `mongodb+srv://salehin:${process.env.DB_PASS}@cluster0.6yzsb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
 console.log(uri);
+
+
 
 // Create a MongoClient with a MongoClientOptions
 const client = new MongoClient(uri, {
@@ -55,24 +75,19 @@ async function run() {
         app.post('/register', async (req, res) => {
             const { name, email, password } = req.body;
 
-            if (!password) {
-                return res.status(400).send({ message: "Password is required" });
-            }
-
-            console.log("Received password:", password); // Debugging
-
+            // Check if user exists
             const existingUser = await UsersCollection.findOne({ email });
             if (existingUser) {
                 return res.status(400).send({ message: "User already exists" });
             }
 
+            // Hash password before saving
             const hashedPassword = await bcrypt.hash(password, 10);
             const newUser = { name, email, password: hashedPassword };
 
             const result = await UsersCollection.insertOne(newUser);
             res.send(result);
         });
-
 
         // User Login
         app.post('/login', async (req, res) => {
@@ -89,7 +104,7 @@ async function run() {
             }
 
             // Generate JWT token
-            const token = jwt.sign({ email: user.email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5d' });
+            const token = jwt.sign({ email: user.email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '30d' });
 
             res
                 .cookie('token', token, {
@@ -98,11 +113,6 @@ async function run() {
                 })
                 .send({ success: true, token });
         });
-
-
-        
-
-        //change pass 
         app.post('/change-password', async (req, res) => {
             const { email, oldPassword, newPassword } = req.body;
 
@@ -141,13 +151,16 @@ async function run() {
         });
 
 
-
         app.post('/logout', (req, res) => {
             res.clearCookie('token').send({ success: true, message: "Logged out successfully" });
         });
+        app.post('/upload-image', upload.single('image'), (req, res) => {
+            if (!req.file) return res.status(400).send({ message: "No file uploaded" });
 
-
-        app.get('/book', verifyJWT, async (req, res) => {
+            const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+            res.send({ success: true, imageUrl });
+        });
+        app.get('/book', async (req, res) => {
             const cursor = BookCollection.find();
             const result = await cursor.toArray();
             res.send(result);
@@ -161,11 +174,13 @@ async function run() {
             res.send(result);
         })
 
-
         app.post('/book', verifyJWT, async (req, res) => {
             const newBook = req.body;
-            console.log(newBook);
+            console.log('Incoming book data:', JSON.stringify(newBook, null, 2));
+            console.log('Data type of publishedYear:', typeof newBook.publishedYear);
+            console.log('Raw request body:', req.body);
             const result = await BookCollection.insertOne(newBook);
+            console.log('MongoDB result:', result);
             res.send(result)
         })
 
@@ -174,16 +189,17 @@ async function run() {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const options = { upsert: true };
+
+            // Create a copy of req.body without the _id field
+            const { _id, ...updateData } = req.body;
+
             const updatedDoc = {
-                $set: req.body
+                $set: updateData
             }
 
             const result = await BookCollection.updateOne(filter, updatedDoc, options)
-
             res.send(result);
         })
-
-
 
         app.delete('/book/:id', verifyJWT, async (req, res) => {
             console.log('going to delete', req.params.id);
@@ -192,9 +208,7 @@ async function run() {
             const result = await BookCollection.deleteOne(query);
             res.send(result);
         })
-
-
-        // Send a ping to confirm a successful connection....
+        // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
@@ -203,6 +217,8 @@ async function run() {
     }
 }
 run().catch(console.dir);
+
+
 
 
 

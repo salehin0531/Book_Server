@@ -201,3 +201,14 @@ Value: token=your-jwt-token
 ```
 
 ---
+
+## 📌 Notes
+
+- Make sure your **MongoDB server** is running.
+- Use **Postman** or any API client to test the endpoints.
+- All book routes require authentication (**JWT Token**).
+- Cookies must be enabled when testing in Postman.
+
+🚀 Happy coding! 🎉
+
+##https://docs.google.com/document/d/1zF2CTsweYk2xSP63gs9exAt6D4YeQmwsBz2IJ_5EL3Y/edit?usp=sharing
